@@ -13,6 +13,7 @@
 	* 2.7. [defer](#defer)
 	* 2.8. [無名関数](#-1)
 	* 2.9. [closure](#closure)
+	* 2.10. [interface](#interface)
 
 <!-- vscode-markdown-toc-config
 	numbering=true
@@ -173,3 +174,27 @@ fmt.Println(g(2)) // 4
 ```
 - 詳しくは以下参照
   - https://blog.framinal.life/entry/2022/12/12/090012
+
+###  2.10. <a name='interface'></a>interface
+- Javaと同じメソッドをまとめたもの
+- interfaceで定義されているメソッドと同名のメソッドを実装しているのであればどんな型でも扱える
+- Javaではimplementsでinterfaceを明示する必要があるが、Goは不必要
+  - interfaceで定義されているメソッドをすべて実装している構造体はそのinterfaceをimplementsしていると勝手に解釈してくれる
+- interfaceの定義例は以下
+```go
+type controller interface {
+	speedUp() int
+	speedDown() int
+}
+```
+- 利用例は以下
+```go
+func speedUpAndDown(c controller) {
+	fmt.Printf("current speed: %v\n", c.speedUp())
+	fmt.Printf("current speed: %v\n", c.speedDown())
+}
+```
+- また、`interface{}`は`any`と同じ意味を持つ
+  - `interface`はそのブロック内で定義されているメソッドをすべて実装している任意の型を扱える
+  - `interface{}`は実装する必要のあるメソッドが何もなく制約が何もないと考えると`any`と同値であると理解できる
+  - APIのレスポンスで見る`map[string]interface{}`はstringがkeyでvalueはintでもstringでも何でもよいよということ
