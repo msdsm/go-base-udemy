@@ -1,13 +1,25 @@
 # セクション2 : Go言語・基礎
 
-- Table of Content
-{:toc}
 
-## 構成
-- 00-module-package
+<!-- vscode-markdown-toc -->
+* 1. [構成](#)
+* 2. [メモ](#-1)
+	* 2.1. [module・packageまわり](#modulepackage)
+	* 2.2. [外部モジュール利用法](#-1)
+	* 2.3. [変数宣言](#-1)
 
-## メモ
-### module・packageまわり
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
+
+
+##  1. <a name=''></a>構成
+- 00-module-package : module, packageについて
+- 01-variables : 変数について
+##  2. <a name='-1'></a>メモ
+###  2.1. <a name='modulepackage'></a>module・packageまわり
 - package : 同じディレクトリに存在するソースコードファイル群のこと
 - module : パッケージの集合
 - go.mod : Goモジュールのパスを書いておくファイル
@@ -19,7 +31,7 @@
 - 変数や関数を外部パッケージからアクセス可能にするためには先頭を大文字にしないといけない
 - 先頭小文字のものは同じパッケージ内の別ファイルからアクセス可能
 - Javaの4つのアクセスレベルのうちpublic, package private(アクセス修飾子ないやつ)にGoの大文字小文字が対応
-### 外部モジュール利用法
+###  2.2. <a name='-1'></a>外部モジュール利用法
 - 以下の3段階(例としてgodotenvを利用する場合)
     1. `go get github.com/joho/godotenv`
     2. import記述(`import "github.com/joho/godotenv"`)
@@ -30,7 +42,7 @@
     3. `go mod tidy`
         - これはimportしていてまだgo getしていないモジュールをすべてgetしてgo.mod, go.sumに記述するコマンド
 
-### 変数宣言
+###  2.3. <a name='-1'></a>変数宣言
 - `var i int`
   - 明示的な代入をスキップ可能(自動初期化)
   - 自動初期化は以下
