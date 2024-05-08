@@ -7,6 +7,12 @@
 	* 2.1. [module・packageまわり](#modulepackage)
 	* 2.2. [外部モジュール利用法](#-1)
 	* 2.3. [変数宣言](#-1)
+	* 2.4. [シャドーイング](#-1)
+	* 2.5. [配列とスライス](#-1)
+	* 2.6. [メソッドとレシーバ](#-1)
+	* 2.7. [defer](#defer)
+	* 2.8. [無名関数](#-1)
+	* 2.9. [closure](#closure)
 
 <!-- vscode-markdown-toc-config
 	numbering=true
@@ -55,10 +61,10 @@
   - ローカル変数として宣言されたブロック内が有効なスコープ
   - そのため関数外では使用不可(グローバル変数になれない)
 
-### シャドーイング
+###  2.4. <a name='-1'></a>シャドーイング
 - 同じスコープ内で同じ名前の変数を再宣言することによって、外側の変数を隠す効果を持つ機能
 
-### 配列とスライス
+###  2.5. <a name='-1'></a>配列とスライス
 - 配列は静的でスライスは動的
 - スライスは参照型
 - 配列とスライスには要素数と容量というものがあり、len, capで取得できる
@@ -69,7 +75,7 @@
 - https://qiita.com/Kashiwara/items/e621a4ad8ec00974f025
 - メモリまわりの振る舞いについては03-slice-map/main.goのコメントアウト参照
 
-### メソッドとレシーバ
+###  2.6. <a name='-1'></a>メソッドとレシーバ
 - メソッドとは、レシーバを持つ関数のこと
 - 以下の例だと`task Task`がレシーバ
 - `func (レシーバ変数名 その変数の構造体の型) 関数名(引数)返り値{}`
@@ -87,3 +93,83 @@ t.extendEstimate()
   - 構造体をコピーして呼び出すため、元のオブジェクトのフィールドの値は変更されない
 - ポインタレシーバ : レシーバが構造体のポインタ型
   - 構造体のポインタが渡されるので元のオブジェクトのフィールドの値を変更できる
+- 詳しくは04-struct-receiver/main.go参照
+
+###  2.7. <a name='defer'></a>defer
+- deferから始まる文はその文が宣言されている関数の実行終了直前で呼び出される
+- deferを複数利用するとstackで扱われる
+  - 逆順に実行されるということ
+- またdeferのついた関数(遅延関数)の引数に与えた変数は即時評価される
+  - defer文の後で引数の値を変更しても影響受けない
+  - 詳しくは以下
+    - https://qiita.com/Ishidall/items/8dd663de5755a15e84f2
+###  2.8. <a name='-1'></a>無名関数
+- 即時実行する場合は以下のように無名関数宣言後の`}`に続けて`()`を付けて引数を与えて呼び出す
+```go
+func(i int) {
+	fmt.Println(i)
+}(i)
+```
+- 変数に代入して実行する場合は以下のように関数型の変数を利用できる
+```go
+f1 := func(i int) int {
+	return i + 1
+}
+fmt.Println(f1(i))
+```
+- 引数で無名関数を利用する例は以下
+```go
+func addExt(f func(file string) string, name string) {
+	fmt.Println(f(name))
+}
+func main(){
+    f2 := func(file string) string {
+		return file + ".csv"
+	}
+	// 引数で無名関数を利用する例
+	addExt(f2, "file1")
+}
+```
+- 返り値で無名関数を利用する例は以下
+```go
+func multiply() func(int) int {
+	return func(n int) int {
+		return n * 1000
+	}
+}
+func main(){
+    f3 := multiply()
+	fmt.Println(f3(2))
+}
+```
+###  2.9. <a name='closure'></a>closure
+- 関数が実行されたときにその性的スコープで定義された変数を利用できる関数のこと
+```go
+// closure
+func countUp() func(int) int {
+	count := 0
+	return func(n int) int {
+		count += n
+		return count
+	}
+}
+func main(){
+    f4 := countUp()
+	for i := 1; i <= 5; i++ {
+		v := f4(2)
+		fmt.Printf("%v\n", v) // 2, 4, 6, 8, 10
+	}
+}
+```
+- f4という関数変数がcountUp()の関数内で定義された変数と、返り値の無名関数を持っているとイメージするとわかりやすい
+- 変数がcountの値を持っているというイメージは以下を考えるとわかりやすい
+```go
+f := countUp()
+g := countUp()
+fmt.Println(f(2)) // 2
+fmt.Println(f(2)) // 4
+fmt.Println(g(2)) // 2
+fmt.Println(g(2)) // 4
+```
+- 詳しくは以下参照
+  - https://blog.framinal.life/entry/2022/12/12/090012
