@@ -280,3 +280,69 @@ m2 := map[int]float32{
 fmt.Println(sumValues(m1))
 fmt.Println(sumValues(m2))
 ```
+
+### ユニットテスト
+- vscodeのgoの拡張機能を入れている場合、関数を右クリックしてGo : generate unit tests for functionを選択すれば自動でひな形が生成される
+- 自動で以下が生成される
+```go
+func TestAdd(t *testing.T) {
+	type args struct {
+		x int
+		y int
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Add(tt.args.x, tt.args.y); got != tt.want {
+				t.Errorf("Add() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+```
+- これに対してテストケースを追加していくだけ
+```go
+func TestAdd(t *testing.T) {
+	type args struct {
+		x int
+		y int
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		// TODO: Add test cases.
+		{
+			name: "1+2=3",          // テストケース名
+			args: args{x: 1, y: 2}, // 引数
+			want: 3,                // 期待する返り値
+		},
+		{
+			name: "2+2=4",
+			args: args{x: 2, y: 2},
+			want: 4,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Add(tt.args.x, tt.args.y); got != tt.want {
+				t.Errorf("Add() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+```
+- ユニットテストの実行は`go test -v .`
+  - vオプションは詳細表示という意味
+- coverageの確認は`go test -v -cover -coverprofile=coverage.out .`
+  - coverageとはテスト対象の関数のうちテストできている箇所の割合のこと
+  - すべての分岐ルートをたどれているかということ
+- coverageが100%でないときに、テストできていないソースコード箇所を見つけるコマンドは`go tool cover -html=coverage.out`
+  - ブラウザが立ち上がり、テストできていないソースコード該当箇所が赤くなる
