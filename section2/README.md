@@ -223,3 +223,60 @@ fmt.Printf("%+v\n", items)
 
 ### error
 - 08-errors/main.goのコメントアウトや使用例を参照
+
+### generics
+- C++のtemplateみたいなもの
+- 以下のように"func 関数名\[関数内で使う型変数 型\]"で"\[\]"の中で定義して使える
+```go
+// int型またはfloat64型を使う場合 int | float64とかく
+func Sum[T int | float64](nums []T) T {
+	var sum T
+	for _, v := range nums {
+		sum += v
+	}
+	return sum
+}
+```
+- また型の列挙にはinterfaceを使える
+```go
+type customConstraints interface {
+	int | int16 | float32 | float64 | string
+}
+func add[T customConstraints](x, y T) T {
+	return x + y
+}
+```
+- ある型から派生させた独自の型も対象にしたいときはチルダを付ける
+```go
+type NewInt int // int型から派生した独自のNewInt型
+type customConstraints interface {
+	~int | int16 | float32 | float64 | string // ~intとすることでint型から派生した独自の型も対象
+}
+func add[T customConstraints](x, y T) T {
+	return x + y
+}
+var i1, i2 NewInt = 3, 4
+fmt.Println(add(i1, i2))
+```
+- genericsは関数内で複数定義可能であるため、以下のように利用できる
+```go
+func sumValues[K int | string, V constraints.Float | constraints.Integer](m map[K]V) V {
+	var sum V
+	for _, v := range m {
+		sum += v
+	}
+	return sum
+}
+m1 := map[string]uint{
+	"A": 1,
+	"B": 2,
+	"C": 3,
+}
+m2 := map[int]float32{
+	1: 1.23,
+	2: 4.56,
+	3: 7.89,
+}
+fmt.Println(sumValues(m1))
+fmt.Println(sumValues(m2))
+```
