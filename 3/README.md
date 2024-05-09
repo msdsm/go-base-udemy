@@ -1,6 +1,9 @@
 # セクション3: Go言語・並行処理
 
 ## 構成
+- 00-goroutine : tracerとsyncGroupを使った並列処理入門
+- 01-channel-0 : unbuffer, buffered, goroutine leakについて
+- 02-channel-1 : closed, capsel, notificationについて
 
 ## メモ
 ### ロジカルコアとフィジカルコア
@@ -136,3 +139,68 @@ for _, i := range s {
 // 実行結果 : 1 3 2
 ```
 - これで先ほどの問題を解決できるがgoroutineがそれぞれ並列処理で実行されるため順番に実行されるとは限らない
+
+### channel
+- 2つの別のgoroutineで値をやり取りするためのパイプのようなもの
+- チャネル変数chに対して`ch<-`で書き込み、`<-ch`で読み込みとなる
+- バッファなしとバッファありがある
+#### バッファなし
+- 送信側(ch<-)は受信側(<-ch)がくるまで実行停止する、逆もしかり
+- プログラマが明示的に何もしなくても送信側受信側で同期がとれるまで停止してくれるから便利
+```go
+ch := make(chan int)
+var wg sync.WaitGroup
+wg.Add(1)
+go func() {
+	defer wg.Done()
+	ch <- 10
+	time.Sleep(500 * time.Millisecond)
+}()
+fmt.Println(<-ch)
+wg.Wait()
+```
+#### バッファあり
+- バッファなしの場合はチャネルの受信が開始している状態じゃないと書き込みができなかったが、バッファつきチャネルでは容量があるならok
+```go
+ch2 := make(chan int, 1)
+ch2 <- 2
+fmt.Println(<-ch2)
+```
+- makeの第二引数でバッファサイズを指定
+- このコードのように受信が開始していない状態でもバッファがあれば書き込みができる
+- 以下のようにバッファサイズを超えるとデッドロックになる
+```go
+ch2 := make(chan int, 1)
+ch2 <- 2
+ch2 <- 2
+fmt.Println(<-ch2)
+```
+- またバッファつきチャネルはqueue
+```go
+ch := make(chan int, 2)
+ch <- 1
+ch <- 2 
+fmt.Println(<-ch)
+fmt.Println(<-ch)
+// 出力結果 : 1 2
+```
+
+### goroutine leak
+- 以下のように無限に待ち状態になって停止していてメモリの解放されないgoroutineがあることをgoroutine leakという
+```go
+func main(){
+    ch1 := make(chan int)
+    go func() { // goroutine leak
+    	fmt.Println(<-ch1)
+    }()
+}
+```
+- goleakを検出するテストは"go.uber.org/goleak"を使って以下のようにかける
+```go
+func TestLeak(t *testing.T) {
+	defer goleak.VerifyNone(t) // ここまで固定
+    // この下にgoleakがあるかどうかを検出したいgoroutine対象を複数記述
+	main()
+}
+```
+- これでgoleakがあるとテスト結果がFAILになる
