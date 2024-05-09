@@ -14,6 +14,11 @@
 	* 2.8. [無名関数](#-1)
 	* 2.9. [closure](#closure)
 	* 2.10. [interface](#interface)
+	* 2.11. [range](#range)
+	* 2.12. [error](#error)
+	* 2.13. [generics](#generics)
+	* 2.14. [ユニットテスト](#-1)
+	* 2.15. [logger](#logger)
 
 <!-- vscode-markdown-toc-config
 	numbering=true
@@ -199,7 +204,7 @@ func speedUpAndDown(c controller) {
   - `interface{}`は実装する必要のあるメソッドが何もなく制約が何もないと考えると`any`と同値であると理解できる
   - APIのレスポンスで見る`map[string]interface{}`はstringがkeyでvalueはintでもstringでも何でもよいよということ
 
-### range
+###  2.11. <a name='range'></a>range
 - `for`文で`range`を使うことでスライスの(index, element)を取得できる
 - ただ注意点として、elementは値のコピーであって参照をコピーしていないので元の値を変えることはできない
 ```go
@@ -221,10 +226,10 @@ for i := range items {
 fmt.Printf("%+v\n", items)
 ```
 
-### error
+###  2.12. <a name='error'></a>error
 - 08-errors/main.goのコメントアウトや使用例を参照
 
-### generics
+###  2.13. <a name='generics'></a>generics
 - C++のtemplateみたいなもの
 - 以下のように"func 関数名\[関数内で使う型変数 型\]"で"\[\]"の中で定義して使える
 ```go
@@ -281,7 +286,7 @@ fmt.Println(sumValues(m1))
 fmt.Println(sumValues(m2))
 ```
 
-### ユニットテスト
+###  2.14. <a name='-1'></a>ユニットテスト
 - vscodeのgoの拡張機能を入れている場合、関数を右クリックしてGo : generate unit tests for functionを選択すれば自動でひな形が生成される
 - 自動で以下が生成される
 ```go
@@ -347,7 +352,7 @@ func TestAdd(t *testing.T) {
 - coverageが100%でないときに、テストできていないソースコード箇所を見つけるコマンドは`go tool cover -html=coverage.out`
   - ブラウザが立ち上がり、テストできていないソースコード該当箇所が赤くなる
   
-### logger
+###  2.15. <a name='logger'></a>logger
 - 以下のようにlog.New()で作れる
 - 第一引数には出力先を指定、io.MultiWriterで複数指定が可能
   - ここでは指定したfileと標準エラー出力を指定
