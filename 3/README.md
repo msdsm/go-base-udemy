@@ -1,24 +1,53 @@
 # セクション3: Go言語・並行処理
 
-## 構成
-- 00-goroutine : tracerとsyncGroupを使った並列処理入門
-- 01-channel-0 : unbuffer, buffered, goroutine leakについて
-- 02-channel-1 : closed, capsel, notificationについて
 
-## メモ
-### ロジカルコアとフィジカルコア
+<!-- vscode-markdown-toc -->
+* 1. [構成](#)
+* 2. [メモ](#-1)
+	* 2.1. [ロジカルコアとフィジカルコア](#-1)
+	* 2.2. [並列処理と並行処理](#-1)
+	* 2.3. [runtime schedulerの仕組み](#runtimescheduler)
+		* 2.3.1. [Preemption](#Preemption)
+		* 2.3.2. [Work stealing](#Workstealing)
+		* 2.3.3. [Handoff](#Handoff)
+	* 2.4. [Fork join model](#Forkjoinmodel)
+	* 2.5. [chained methodのdefer](#chainedmethoddefer)
+	* 2.6. [trace](#trace)
+	* 2.7. [goroutineの注意点](#goroutine)
+	* 2.8. [channel](#channel)
+		* 2.8.1. [バッファなし](#-1)
+		* 2.8.2. [バッファあり](#-1)
+	* 2.9. [goroutine leak](#goroutineleak)
+	* 2.10. [channelのclose](#channelclose)
+		* 2.10.1. [バッファなしchannelのclose](#channelclose-1)
+		* 2.10.2. [バッファなしchannelのclose](#channelclose-1)
+	* 2.11. [channelのカプセル化](#channel-1)
+
+<!-- vscode-markdown-toc-config
+	numbering=true
+	autoSave=true
+	/vscode-markdown-toc-config -->
+<!-- /vscode-markdown-toc -->
+
+##  1. <a name=''></a>構成
+- 00-goroutine : tracerとsyncGroupを使った並列処理入門
+- 01-channel-0 : バッファありなしchannel, goroutine leakについて
+- 02-channel-1 : channelのclose, カプセル化, 通知専用channelについて
+
+##  2. <a name='-1'></a>メモ
+###  2.1. <a name='-1'></a>ロジカルコアとフィジカルコア
 - ロジカルコア : 論理コア
   - コンピュータから見たときに存在するように見えるCPUのコア
 - フィジカルコア : 物理コア
   - CPUの中に実際にあるコア
 - 8コア/16スレッドなどのCPUの場合は物理コア数が8で論理コア数が16ということ
 
-### 並列処理と並行処理
+###  2.2. <a name='-1'></a>並列処理と並行処理
 - 並列処理(Parallelism)
   - 複数コアを使って複数のタスクをそれぞれ異なるコアに格納して同時に実行する方式
 - 並行処理(Concurrency)
   - 1つのCPUコアが複数のプロセスを切り替えながら実行することで実際には同時実行していないが、同時実行しているようにあたかも見えるというもの
-### runtime schedulerの仕組み
+###  2.3. <a name='runtimescheduler'></a>runtime schedulerの仕組み
 - P個のlogical processorを持つ
 - 各logical processorはlocal queueを1つもつ
   - このqueueに最大256個のgoroutineを格納できる
@@ -27,18 +56,18 @@
 - local processorはlocal queueからgoroutineを持ってきてOSのthreadに割り当てて実行させる
 - これによりロジカルコア数以上のgoroutineを扱うことができる
 - 以下の3つの処理によって割り当てが最適化されている
-#### Preemption
+####  2.3.1. <a name='Preemption'></a>Preemption
 - OSのthreadで10ms実行したgoroutineはglobal queueの末尾に移動する
 - これによって1つのgoroutineが1つのthreadを長時間占有するということを防ぐことができる
-#### Work stealing
+####  2.3.2. <a name='Workstealing'></a>Work stealing
 - logical processorは一定間隔ごとに自身のlocal queueを確認してgoroutineがあるならthreadに割り当てる
 - また一定間隔ごとにglobal queueを確認してgoroutineがあるなら持ってくる
 - そして、自身のlocal queueとglobal queueの両方が空の場合に他のlocal queueに格納されているgoroutineの半分を自身のlocal queueに持ってくる(これがwork stealing)
-#### Handoff
+####  2.3.3. <a name='Handoff'></a>Handoff
 - あるスレッドで実行されているgoroutineが待ち状態になった時にlogical processorとそのthreadを切り離して、logical processorに別のthreadを割り当てるというもの
   - これによって待ち状態になっているgoroutineの実行を待つことなく自身のqueueにあるgoroutineをもう一つthreadに割り当てて実行できる
 
-### Fork join model
+###  2.4. <a name='Forkjoinmodel'></a>Fork join model
 - main関数もgoroutine
 - main関数で新しいgoroutineを走らせるとmainの実行が終わるとほかのgoroutineの終了を待たずに終了してしまう
 - 他のgoroutineがすべて終了してからmainのgoroutineを終了させないといけない
@@ -54,7 +83,7 @@ var wg sync.WaitGroup // sync.WaitGroupで管理
 	wg.Wait() // カウンタが0になるまでここで停止する
 ```
 
-### chained methodのdefer
+###  2.5. <a name='chainedmethoddefer'></a>chained methodのdefer
 ```go
 defer trace.StartRegion(ctx, name).End() // chained methodなのでEnd()だけdefer
 ```
@@ -71,7 +100,7 @@ defer A().B().C().D().E().F().G().H()
 // Hだけdeferされる、それ以外はこのdefer文に到達したときに普通に実行される
 ```
 
-### trace
+###  2.6. <a name='trace'></a>trace
 - goroutineがどう動いているかを可視化することができる
 - 以下使用例(逐次処理の場合)
 ```go
@@ -113,7 +142,7 @@ task(ctx, "Task3")
 - そうするとそれぞれのtaskがどのように実行されたか可視化されたものが表示される
 - この例では逐次実行なので、task1->task2->task3->が順に実行されている
 
-### goroutineの注意点
+###  2.7. <a name='goroutine'></a>goroutineの注意点
 ```go
 s := []int{1, 2, 3}
 for _, i := range s {
@@ -140,11 +169,11 @@ for _, i := range s {
 ```
 - これで先ほどの問題を解決できるがgoroutineがそれぞれ並列処理で実行されるため順番に実行されるとは限らない
 
-### channel
+###  2.8. <a name='channel'></a>channel
 - 2つの別のgoroutineで値をやり取りするためのパイプのようなもの
 - チャネル変数chに対して`ch<-`で書き込み、`<-ch`で読み込みとなる
 - バッファなしとバッファありがある
-#### バッファなし
+####  2.8.1. <a name='-1'></a>バッファなし
 - 送信側(ch<-)は受信側(<-ch)がくるまで実行停止する、逆もしかり
 - プログラマが明示的に何もしなくても送信側受信側で同期がとれるまで停止してくれるから便利
 ```go
@@ -159,7 +188,7 @@ go func() {
 fmt.Println(<-ch)
 wg.Wait()
 ```
-#### バッファあり
+####  2.8.2. <a name='-1'></a>バッファあり
 - バッファなしの場合はチャネルの受信が開始している状態じゃないと書き込みができなかったが、バッファつきチャネルでは容量があるならok
 ```go
 ch2 := make(chan int, 1)
@@ -185,7 +214,7 @@ fmt.Println(<-ch)
 // 出力結果 : 1 2
 ```
 
-### goroutine leak
+###  2.9. <a name='goroutineleak'></a>goroutine leak
 - 以下のように無限に待ち状態になって停止していてメモリの解放されないgoroutineがあることをgoroutine leakという
 ```go
 func main(){
@@ -204,3 +233,92 @@ func TestLeak(t *testing.T) {
 }
 ```
 - これでgoleakがあるとテスト結果がFAILになる
+
+###  2.10. <a name='channelclose'></a>channelのclose
+####  2.10.1. <a name='channelclose-1'></a>バッファなしchannelのclose
+```go
+ch1 := make(chan int)
+var wg sync.WaitGroup
+wg.Add(1)
+go func() {
+	defer wg.Done()
+	fmt.Println(<-ch1)
+}()
+ch1 <- 10
+close(ch1)
+v, ok := <-ch1
+fmt.Printf("%v %v\n", v, ok) // 0 false
+```
+- このようにcloseした後に読み込み操作をするとcloseしていなければデッドロックとなってしまうが(0, false)が返却される
+  - 0はint型のデフォルト値
+####  2.10.2. <a name='channelclose-1'></a>バッファなしchannelのclose
+```go
+ch2 := make(chan int, 2)
+ch2 <- 1
+ch2 <- 2
+close(ch2)
+v, ok = <-ch2
+fmt.Printf("%v %v\n", v, ok) // 1 true
+v, ok = <-ch2
+fmt.Printf("%v %v\n", v, ok) // 2 true
+v, ok = <-ch2
+fmt.Printf("%v %v\n", v, ok) // 0 false
+```
+- このようにcloseしたあともバッファに値が残っている間は値が返却される
+- バッファに値が残っていない状態になると型のデフォルト値が返って返り値の2つ目はfalseになる
+- これを利用して以下のように通知専用のチャネルを作成できる
+　- <-chによって待ち状態になっているものがcloseによって解放されるため
+```go
+// 通知専用のchannelの例
+nCh := make(chan struct{}) // 空の構造体のサイズは0byte
+for i := 0; i < 5; i++ {
+	wg.Add(1)
+	go func(i int) {
+		defer wg.Done()
+		fmt.Printf("goroutine %v started\n", i)
+		<-nCh // ここで停止して待ち状態に入る
+		fmt.Println(i)
+	}(i)
+}
+time.Sleep(2 * time.Second)
+close(nCh) // これにより解放される
+fmt.Println("unlocked by manual close")
+wg.Wait()
+fmt.Println("finish")
+```
+- 実行結果は以下
+```
+goroutine 0 started
+goroutine 4 started
+goroutine 3 started
+goroutine 1 started
+goroutine 2 started
+unlocked by manual close
+1
+2
+3
+0
+4
+```
+###  2.11. <a name='channel-1'></a>channelのカプセル化
+- 以下のようにカプセル化できる
+```go
+func main(){
+	ch3 := generateCountStream()
+	for v := range ch3 {
+		fmt.Println(v)
+	}
+}
+// <-chanは読み取り専用のchannel型
+func generateCountStream() <-chan int {
+	ch := make(chan int)
+	go func() {
+		defer close(ch)
+		for i := 0; i <= 5; i++ {
+			ch <- i
+		}
+	}()
+	return ch
+}
+// 実行結果 0 1 2 3 4 5
+```
