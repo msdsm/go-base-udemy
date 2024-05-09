@@ -198,3 +198,25 @@ func speedUpAndDown(c controller) {
   - `interface`はそのブロック内で定義されているメソッドをすべて実装している任意の型を扱える
   - `interface{}`は実装する必要のあるメソッドが何もなく制約が何もないと考えると`any`と同値であると理解できる
   - APIのレスポンスで見る`map[string]interface{}`はstringがkeyでvalueはintでもstringでも何でもよいよということ
+
+### range
+- `for`文で`range`を使うことでスライスの(index, element)を取得できる
+- ただ注意点として、elementは値のコピーであって参照をコピーしていないので元の値を変えることはできない
+```go
+type item struct {
+	price float32
+}
+items := []item{
+	{price: 10.},
+	{price: 20.},
+	{price: 30.},
+}
+for _, item := range items {
+	item.price *= 1.1 // このitemは構造体の値のコピーであって参照ではないので値変わらない
+}
+fmt.Printf("%+v\n", items) // priceは変わっていない
+for i := range items {
+	items[i].price *= 1.1 // 値を変えたい場合はこのようにindexを使ってアクセス
+}
+fmt.Printf("%+v\n", items)
+```
