@@ -346,3 +346,15 @@ func TestAdd(t *testing.T) {
   - すべての分岐ルートをたどれているかということ
 - coverageが100%でないときに、テストできていないソースコード箇所を見つけるコマンドは`go tool cover -html=coverage.out`
   - ブラウザが立ち上がり、テストできていないソースコード該当箇所が赤くなる
+  
+### logger
+- 以下のようにlog.New()で作れる
+- 第一引数には出力先を指定、io.MultiWriterで複数指定が可能
+  - ここでは指定したfileと標準エラー出力を指定
+- 第3引数のlog.Lshortfileはファイル名や行数などを表示してくれる
+```go
+file, err := os.Create("log.txt")
+warnLogger := log.New(io.MultiWriter(file, os.Stderr), "WARN: ", log.Lshortfile)
+warnLogger.Println("warning A") // WARN: main.go:20: warning A
+```
+- PrintlnではなくFatallnを使うとログを出力した後にプログラムを強制終了させることができる
