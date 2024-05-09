@@ -220,3 +220,6 @@ for i := range items {
 }
 fmt.Printf("%+v\n", items)
 ```
+
+### error
+- 08-errors/main.goのコメントアウトや使用例を参照
