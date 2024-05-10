@@ -30,12 +30,18 @@
 <!-- /vscode-markdown-toc -->
 
 ##  1. <a name=''></a>構成
-- 00-goroutine : tracerとsyncGroupを使った並列処理入門
-- 01-channel-0 : バッファありなしchannel, goroutine leakについて
-- 02-channel-1 : channelのclose, カプセル化, 通知専用channelについて
-- 03-select-0  : select, timeout contextについて
-- 04-select-1  : select, defaultについて
-- 05-select-2  : select, 複数チャネルのデータ読み込みについて
+- 00-goroutine    : tracerとsyncGroupを使った並列処理入門
+- 01-channel-0    : バッファありなしchannel, goroutine leakについて
+- 02-channel-1    : channelのclose, カプセル化, 通知専用channelについて
+- 03-select-0     : select, timeout contextについて
+- 04-select-1     : select, defaultについて
+- 05-select-2     : select, 複数チャネルのデータ読み込みについて
+- 06-mutex-atomic : mutex, atomicについて
+- 07-context      : contextについて(cancel, timeout, deadline)
+- 08-errgroup     : について
+- 09-pipeline     : について
+- 10-fanout-fanin : について
+- 11-heartbeat    : について
 
 ##  2. <a name='-1'></a>メモ
 ###  2.1. <a name='-1'></a>ロジカルコアとフィジカルコア
@@ -478,3 +484,18 @@ fmt.Println("finish")
 // 実行結果
 // 50
 ```
+
+### Context
+- main goroutineからサブgoroutinに情報を伝搬させるときにつかう
+- goroutineの関係が木構造になっていて親から子に情報を伝搬させていくということ
+- 主な機能例は以下
+  - `func WichCancel(parent Context)` : マニュアルキャンセル
+    - 詳しくは`07-context/withcancel/main.go`参照
+  - `func WithDeadline(parent context, d time.Time)` : 時刻でdeadlineを指定
+    - 詳しくは`07-context/withdeadline/main.go`参照
+  - `func WithTimeout(parent Context, timeout time.Duration)` : timeoutを指定
+    - 詳しくは`07-context/withtimeout/main.go`参照
+- contexを作成するには第一引数に親のコンテキストを与える
+  - つまり、機能を追加したい場合は親のコンテキストをもとに新しいコンテキストを生成するということ
+  - `ctx, cancel := context.WithCancel(context.Background())`など
+  - `context.Background()`は空のcontextのことであり、親のいないcontext(ルートノード)に使う
