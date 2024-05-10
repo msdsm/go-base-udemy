@@ -39,8 +39,8 @@
 - 06-mutex-atomic : mutex, atomicについて
 - 07-context      : contextについて(cancel, timeout, deadline)
 - 08-errgroup     : エラーグループについて
-- 09-pipeline     : について
-- 10-fanout-fanin : について
+- 09-pipeline     : pipelineについて
+- 10-fanout-fanin : fan-out, fan-inについて
 - 11-heartbeat    : について
 
 ##  2. <a name='-1'></a>メモ
@@ -573,3 +573,8 @@ func doTask(ctx context.Context, task string) error {
 	return nil
 }
 ```
+
+### pipeline
+- channelを引数と返り値にとることによってpipelineを実現できる
+- それぞれの階層で1つずつ入力が流れていくイメージ
+- 詳しくは09-pipeline/main.go参照
