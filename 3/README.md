@@ -35,6 +35,7 @@
 - 02-channel-1 : channelのclose, カプセル化, 通知専用channelについて
 - 03-select-0  : select, timeout contextについて
 - 04-select-1  : select, defaultについて
+- 05-select-2  : select, 複数チャネルのデータ読み込みについて
 
 ##  2. <a name='-1'></a>メモ
 ###  2.1. <a name='-1'></a>ロジカルコアとフィジカルコア
@@ -338,44 +339,13 @@ select {
 - chに値が入っている場合は`case v := <- ch`が実行されて値が入っていない場合はdefaultが実行される
 - このように値が入っていない場合に実行停止せずにほかの処理を走らせたいときにselectを使える
 - また、channelがcloseされているとcase文が実行される(default値, false)が返ってくるから
-- caseの判定は上から順に判定されて最初にtrueのものが実行される
-  - switch文のようなもの
-  - つまり複数のcaseが条件を満たしていても1つのcaseしか実行されない
+- caseを途中で抜ける場合はbreakを使う
 ```go
-ch1 := make(chan string)
-ch2 := make(chan string)
-var wg sync.WaitGroup
-wg.Add(2)
-go func() {
-	defer wg.Done()
-	time.Sleep(500 * time.Millisecond)
-	ch1 <- "A"
-}()
-go func() {
-	defer wg.Done()
-	time.Sleep(800 * time.Millisecond)
-	ch2 <- "B"
-}()
-cnt := 0
-for ch1 != nil || ch2 != nil {
-	cnt++
-	select {
-	case v := <-ch1:
-		fmt.Println(v)
-		ch1 = nil
-	case v := <-ch2:
-		fmt.Println(v)
-		ch2 = nil
-	}
+select{
+	case ...:
+		break
+		...
 }
-wg.Wait()
-fmt.Println("finish")
-fmt.Println(cnt)
-// 実行結果
-// A
-// B
-// finish
-// 2
 ```
 ### context.WithTimeout
 - タイムアウトの設定方法
