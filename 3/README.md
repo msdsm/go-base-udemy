@@ -578,3 +578,10 @@ func doTask(ctx context.Context, task string) error {
 - channelを引数と返り値にとることによってpipelineを実現できる
 - それぞれの階層で1つずつ入力が流れていくイメージ
 - 詳しくは09-pipeline/main.go参照
+
+### fan-out, fan-in
+- pipelineにおいてあるステージの計算量が多くボトルネックになっている場合に使う
+- そのステージに順に1つずつ送られてくるchannelをさらにgoroutineとして並列処理させる
+  - これがfan-out
+- 実行後に出力結果である複数のchannelを合流させて再度順に次のステージに入力する
+  - これがfan-in
