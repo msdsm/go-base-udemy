@@ -33,6 +33,7 @@
 - 00-goroutine : tracerとsyncGroupを使った並列処理入門
 - 01-channel-0 : バッファありなしchannel, goroutine leakについて
 - 02-channel-1 : channelのclose, カプセル化, 通知専用channelについて
+- 03-select-0  : select, timeout contextについて 
 
 ##  2. <a name='-1'></a>メモ
 ###  2.1. <a name='-1'></a>ロジカルコアとフィジカルコア
@@ -321,4 +322,69 @@ func generateCountStream() <-chan int {
 	return ch
 }
 // 実行結果 0 1 2 3 4 5
+```
+
+### select
+- channelに値が入っていない場合に受信はブロックするが、ブロックせずに処理を行いたい場合に使える
+```go
+select {
+	case v := <- ch:
+		fmt.Println(v)
+	default:
+		fmt.Println("no value")
+}
+```
+- chに値が入っている場合は`case v := <- ch`が実行されて値が入っていない場合はdefaultが実行される
+- このように値が入っていない場合に実行停止せずにほかの処理を走らせたいときにselectを使える
+- また、channelがcloseされているとcase文が実行される(default値, false)が返ってくるから
+- caseの判定は上から順に判定されて最初にtrueのものが実行される
+  - switch文のようなもの
+  - つまり複数のcaseが条件を満たしていても1つのcaseしか実行されない
+```go
+ch1 := make(chan string)
+ch2 := make(chan string)
+var wg sync.WaitGroup
+wg.Add(2)
+go func() {
+	defer wg.Done()
+	time.Sleep(500 * time.Millisecond)
+	ch1 <- "A"
+}()
+go func() {
+	defer wg.Done()
+	time.Sleep(800 * time.Millisecond)
+	ch2 <- "B"
+}()
+cnt := 0
+for ch1 != nil || ch2 != nil {
+	cnt++
+	select {
+	case v := <-ch1:
+		fmt.Println(v)
+		ch1 = nil
+	case v := <-ch2:
+		fmt.Println(v)
+		ch2 = nil
+	}
+}
+wg.Wait()
+fmt.Println("finish")
+fmt.Println(cnt)
+// 実行結果
+// A
+// B
+// finish
+// 2
+```
+### context.WithTimeout
+- タイムアウトの設定方法
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 600*time.Millisecond)
+defer cancel()
+select{
+	case <-ctx.Done():
+		fmt.Println("Timeout")
+	case ...
+	...
+}
 ```
