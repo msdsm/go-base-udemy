@@ -359,3 +359,122 @@ select{
 	...
 }
 ```
+
+
+### data race
+- データレースとは、あるメモリー位置への書き込みであって、その同じ位置に対するほかの読み込みまたは書き込みと並列に起きるもの
+- 以下がデータレースの例
+```go
+var wg sync.WaitGroup
+var i int
+wg.Add(2)
+go func() {
+	defer wg.Done()
+	i++
+}()
+go func() {
+	defer wg.Done()
+	i++
+}()
+wg.Wait()
+fmt.Println(i)
+```
+- 2つのgoroutineがたまたま同時にiのインクリメント(0から1)を行うと実行結果が2ではなく1になりうる
+- これがデータレース
+- データレースの検出方法は`go run -race main.go`
+- このようなデータ競合の回避にmutexを使える
+### Mutex
+- goの排他制御機構
+```go
+var wg sync.WaitGroup
+var mu sync.Mutex
+var i int
+wg.Add(2)
+go func() {
+	defer wg.Done()
+	mu.Lock()
+	defer mu.Unlock()
+	i++
+}()
+go func() {
+	defer wg.Done()
+	mu.Lock()
+	defer mu.Unlock()
+	i++
+}()
+wg.Wait()
+fmt.Println(i)
+```
+- Lock()でMutexをロックしてUnlock()でMutexをアンロックする
+- これによってiに対するdata raceを回避できている
+  - iを占有できているから
+
+### RWMutex
+- readのlockによって他のreadをlockしない
+```go
+func main(){
+	var wg sync.WaitGroup
+	var rwMu sync.RWMutex
+	var c int
+	wg.Add(4)
+	go write(&rwMu, &wg, &c)
+	go read(&rwMu, &wg, &c)
+	go read(&rwMu, &wg, &c)
+	go read(&rwMu, &wg, &c)
+	wg.Wait()
+	fmt.Println("finish")
+}
+func read(mu *sync.RWMutex, wg *sync.WaitGroup, c *int) {
+	defer wg.Done()
+	time.Sleep(10 * time.Millisecond)
+	mu.RLock()
+	defer mu.RUnlock()
+	fmt.Println("read lock")
+	fmt.Println(*c)
+	time.Sleep(1 * time.Second)
+	fmt.Println("read unlock")
+}
+func write(mu *sync.RWMutex, wg *sync.WaitGroup, c *int) {
+	defer wg.Done()
+	mu.Lock()
+	defer mu.Unlock()
+	fmt.Println("write lock")
+	*c += 1
+	time.Sleep(1 * time.Second)
+	fmt.Println("write unlock")
+}
+// 実行結果
+// write lock
+// write unlock
+// read lock
+// 1
+// read lock
+// read lock
+// 1
+// 1
+// read unlock
+// read unlock
+// read unlock
+// finish
+```
+### atomic
+- 簡単に排他制御できる
+- 以下の例だと第一引数にロックする対象の整数変数のポインタ、第二引数に加算する値
+```go
+var wg sync.WaitGroup
+var c int64
+for i := 0; i < 5; i++ {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for j := 0; j < 10; j++ {
+			atomic.AddInt64(&c, 1) // 排他制御
+		}
+	}()
+}
+wg.Wait()
+fmt.Println(c)
+fmt.Println("finish")
+// 実行結果
+// 50
+```
