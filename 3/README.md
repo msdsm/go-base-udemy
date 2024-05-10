@@ -38,7 +38,7 @@
 - 05-select-2     : select, 複数チャネルのデータ読み込みについて
 - 06-mutex-atomic : mutex, atomicについて
 - 07-context      : contextについて(cancel, timeout, deadline)
-- 08-errgroup     : について
+- 08-errgroup     : エラーグループについて
 - 09-pipeline     : について
 - 10-fanout-fanin : について
 - 11-heartbeat    : について
@@ -499,3 +499,77 @@ fmt.Println("finish")
   - つまり、機能を追加したい場合は親のコンテキストをもとに新しいコンテキストを生成するということ
   - `ctx, cancel := context.WithCancel(context.Background())`など
   - `context.Background()`は空のcontextのことであり、親のいないcontext(ルートノード)に使う
+
+### errgroup
+- errgroupでは複数のgoroutineを実行してそれらのうちにエラーがあったときにエラーを知るということを可能にしてくれる
+- `go func(){}`ではerrorを検出できない
+- errgroupでは`eg.Go(func() error{`のようにerrorを返せるようになっている
+```go
+func main() {
+	eg := new(errgroup.Group)
+	s := []string{"task1", "fake1", "task2", "fake2"}
+	for _, v := range s {
+		task := v
+		eg.Go(func() error {
+			return doTask(task)
+		})
+	}
+	// errorがあった場合に最初に発生したものだけ返る
+	if err := eg.Wait(); err != nil {
+		fmt.Printf("error :%v\n", err)
+	}
+	fmt.Println("finish")
+}
+func doTask(task string) error {
+	if task == "fake1" || task == "fake2" {
+		return fmt.Errorf("%v failed", task)
+	}
+	fmt.Printf("task %v completed\n", task)
+	return nil
+}
+
+```
+- またcontextを使ってどれか1つのgoroutineがerrorを返したときにほかのgoroutineをすべてcancelするなどの処理が可能
+  - `eg := new(errgroup.Group)`ではなく`eg, ctx := errgroup.WithContext(context.Background())`などとする
+  - errgroup.WithContextは最初にerrorを検出した段階でDone()チャネルをcloseするという仕様になっている
+- 以下例
+```go
+func main() {
+	eg, ctx := errgroup.WithContext(context.Background())
+	s := []string{"task1", "fake1", "task2", "fake2", "task3"}
+	for _, v := range s {
+		task := v
+		eg.Go(func() error {
+			return doTask(ctx, task)
+		})
+	}
+	// errorがあった場合に最初に発生したものだけ返る
+	if err := eg.Wait(); err != nil {
+		fmt.Printf("error :%v\n", err)
+	}
+	fmt.Println("finish")
+}
+func doTask(ctx context.Context, task string) error {
+	var t *time.Ticker
+	switch task {
+	case "fake1":
+		t = time.NewTicker(500 * time.Millisecond)
+	case "fake2":
+		t = time.NewTicker(700 * time.Millisecond)
+	default:
+		t = time.NewTicker(200 * time.Millisecond)
+	}
+	select {
+	case <-ctx.Done(): // 他のgoroutineでerrorを返しているとcloseになっている
+		fmt.Printf("%v cancelled : %v\n", task, ctx.Err())
+		return ctx.Err()
+	case <-t.C:
+		t.Stop()
+		if task == "fake1" || task == "fake2" {
+			return fmt.Errorf("%v process failed", task)
+		}
+		fmt.Printf("task %v completed\n", task)
+	}
+	return nil
+}
+```
