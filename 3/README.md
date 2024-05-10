@@ -33,7 +33,8 @@
 - 00-goroutine : tracerとsyncGroupを使った並列処理入門
 - 01-channel-0 : バッファありなしchannel, goroutine leakについて
 - 02-channel-1 : channelのclose, カプセル化, 通知専用channelについて
-- 03-select-0  : select, timeout contextについて 
+- 03-select-0  : select, timeout contextについて
+- 04-select-1  : select, defaultについて
 
 ##  2. <a name='-1'></a>メモ
 ###  2.1. <a name='-1'></a>ロジカルコアとフィジカルコア
