@@ -22,6 +22,18 @@
 		* 2.10.1. [バッファなしchannelのclose](#channelclose-1)
 		* 2.10.2. [バッファなしchannelのclose](#channelclose-1)
 	* 2.11. [channelのカプセル化](#channel-1)
+	* 2.12. [select](#select)
+	* 2.13. [context.WithTimeout](#context.WithTimeout)
+	* 2.14. [data race](#datarace)
+	* 2.15. [Mutex](#Mutex)
+	* 2.16. [RWMutex](#RWMutex)
+	* 2.17. [atomic](#atomic)
+	* 2.18. [Context](#Context)
+	* 2.19. [errgroup](#errgroup)
+	* 2.20. [pipeline](#pipeline)
+	* 2.21. [fan-out, fan-in](#fan-outfan-in)
+	* 2.22. [heartbeat, watchdog Timer](#heartbeatwatchdogTimer)
+	* 2.23. [selectのランダム性について](#select-1)
 
 <!-- vscode-markdown-toc-config
 	numbering=true
@@ -332,7 +344,7 @@ func generateCountStream() <-chan int {
 // 実行結果 0 1 2 3 4 5
 ```
 
-### select
+###  2.12. <a name='select'></a>select
 - channelに値が入っていない場合に受信はブロックするが、ブロックせずに処理を行いたい場合に使える
 ```go
 select {
@@ -353,7 +365,7 @@ select{
 		...
 }
 ```
-### context.WithTimeout
+###  2.13. <a name='context.WithTimeout'></a>context.WithTimeout
 - タイムアウトの設定方法
 ```go
 ctx, cancel := context.WithTimeout(context.Background(), 600*time.Millisecond)
@@ -367,7 +379,7 @@ select{
 ```
 
 
-### data race
+###  2.14. <a name='datarace'></a>data race
 - データレースとは、あるメモリー位置への書き込みであって、その同じ位置に対するほかの読み込みまたは書き込みと並列に起きるもの
 - 以下がデータレースの例
 ```go
@@ -389,7 +401,7 @@ fmt.Println(i)
 - これがデータレース
 - データレースの検出方法は`go run -race main.go`
 - このようなデータ競合の回避にmutexを使える
-### Mutex
+###  2.15. <a name='Mutex'></a>Mutex
 - goの排他制御機構
 ```go
 var wg sync.WaitGroup
@@ -415,7 +427,7 @@ fmt.Println(i)
 - これによってiに対するdata raceを回避できている
   - iを占有できているから
 
-### RWMutex
+###  2.16. <a name='RWMutex'></a>RWMutex
 - readのlockによって他のreadをlockしない
 ```go
 func main(){
@@ -463,7 +475,7 @@ func write(mu *sync.RWMutex, wg *sync.WaitGroup, c *int) {
 // read unlock
 // finish
 ```
-### atomic
+###  2.17. <a name='atomic'></a>atomic
 - 簡単に排他制御できる
 - 以下の例だと第一引数にロックする対象の整数変数のポインタ、第二引数に加算する値
 ```go
@@ -485,7 +497,7 @@ fmt.Println("finish")
 // 50
 ```
 
-### Context
+###  2.18. <a name='Context'></a>Context
 - main goroutineからサブgoroutinに情報を伝搬させるときにつかう
 - goroutineの関係が木構造になっていて親から子に情報を伝搬させていくということ
 - 主な機能例は以下
@@ -500,7 +512,7 @@ fmt.Println("finish")
   - `ctx, cancel := context.WithCancel(context.Background())`など
   - `context.Background()`は空のcontextのことであり、親のいないcontext(ルートノード)に使う
 
-### errgroup
+###  2.19. <a name='errgroup'></a>errgroup
 - errgroupでは複数のgoroutineを実行してそれらのうちにエラーがあったときにエラーを知るということを可能にしてくれる
 - `go func(){}`ではerrorを検出できない
 - errgroupでは`eg.Go(func() error{`のようにerrorを返せるようになっている
@@ -574,14 +586,56 @@ func doTask(ctx context.Context, task string) error {
 }
 ```
 
-### pipeline
+###  2.20. <a name='pipeline'></a>pipeline
 - channelを引数と返り値にとることによってpipelineを実現できる
 - それぞれの階層で1つずつ入力が流れていくイメージ
 - 詳しくは09-pipeline/main.go参照
 
-### fan-out, fan-in
+###  2.21. <a name='fan-outfan-in'></a>fan-out, fan-in
 - pipelineにおいてあるステージの計算量が多くボトルネックになっている場合に使う
 - そのステージに順に1つずつ送られてくるchannelをさらにgoroutineとして並列処理させる
   - これがfan-out
 - 実行後に出力結果である複数のchannelを合流させて再度順に次のステージに入力する
   - これがfan-in
+
+###  2.22. <a name='heartbeatwatchdogTimer'></a>heartbeat, watchdog Timer
+- main goroutineがsub goroutineが正常に動いていることを監視するために使う
+- heartbeatとは、sub goroutineからmain goroutineに一定間隔で正常に稼働していることを知らせるもの
+  - パルス波のようなイメージ
+- watchdog timerは設定されたタイムアウト時間に達するとsub goroutineが稼働していないと異常検知するもの
+  - watchdog timerは横軸が時刻のグラフを考えると線形に値が増えていき、縦軸の値がタイムアウトに達すると異常を検知
+  - ただし、途中でheartbeatが送信されたタイミングで値を0に戻す
+- 詳しくは11-heartbeatのコード参照
+
+###  2.23. <a name='select-1'></a>selectのランダム性について
+- 複数のcaseが条件を満たしているときに、select文では一様分布に基づいてランダムに選ばれる
+```go
+func main() {
+	for i := 0; i < 10; i++ {
+		ch1 := make(chan string, 1)
+		ch2 := make(chan string, 1)
+		ch1 <- "ch1"
+		ch2 <- "ch2"
+		select {
+		case v := <-ch1:
+			fmt.Println(v)
+		case v := <-ch2:
+			fmt.Println(v)
+		}
+	}
+}
+
+```
+- 実行結果は以下
+```
+ch2
+ch1
+ch1
+ch2
+ch1
+ch2
+ch1
+ch1
+ch2
+ch1
+```
