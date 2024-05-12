@@ -14,10 +14,10 @@ func main() {
 	defer cancel()
 	nums := []int{1, 2, 3, 4, 5, 7, 8}
 
-	outChs := make([]<-chan string, cores)
+	outChs := make([]<-chan string, cores) // channelのスライスをロジカルコアの個数だけ作成
 	inData := generator(ctx, nums...)
 	for i := 0; i < cores; i++ {
-		outChs[i] = fanOut(ctx, inData, i+1)
+		outChs[i] = fanOut(ctx, inData, i+1) // ロジカルコアの個数だけfanOutを実行
 	}
 	var i int
 	flag := true
